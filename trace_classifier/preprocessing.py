@@ -1,0 +1,182 @@
+from .utils import create_label
+from .utils import add_id
+from .utils import random_int_column
+from .word_vec import create_words
+from .word_vec import create_word_vecs
+from .phrase import create_phrases
+
+
+
+def preprocessing_part0(df, class_col=None, classes=None, n_folds=1, seed=None):
+    """
+    Preprocessing (Part 0): Housekeeping.
+
+    Assign each trace a unique ID, and (for training and validation) converts
+    string class to integer label.
+
+    Parameters
+    ----------
+    df: A pyspark.sql.dataframe.DataFrame.
+    class_col: String, required for training and validation, but not required for inferencing.
+               Name of the column that contains the class name for each trace.
+    classes: List of strings, required for training and validation but not for inferencing.
+             A list of class names.
+    n_folds: Integer (optional).
+             Number of folds to randomly assign traces to.
+    seed: Integer (optional).
+          Seed number for randomly assigning traces to a fold.
+
+    Returns
+    -------
+    A pyspark.sql.dataframe.DataFrame with new columns
+    `id` (integer) for unique trace ID,
+    `fold` (integer) for fold number (only if n_folds > 1).
+    """
+
+
+    # Add an id column so that we can split a trace into pieces and still
+    # know which piece comes from which trace.
+    df2 = add_id(df)
+
+    # Convert class names to integer labels
+    if class_col is not None:  # i.e. training and validation data
+        assert classes is not None
+
+        # Create label
+        df2 = create_label(df2, class_col, 'label', classes)
+
+    # Assign each trace to a fold
+    if n_folds > 1:
+        df2 = random_int_column(df2, 0, n_folds, 'fold', seed=seed)
+
+    return df2
+
+
+
+def preprocessing_part1(df, instruction):
+    """
+    Proprocessing (Part 1): Form "words" from a "sentence".
+
+    A sentence is a location trace, and a word is a list of N coordinates
+    that may or may not be consecutive.
+
+    Parameters
+    ----------
+    df: A pyspark.sql.dataframe.DataFrame.
+        Expects a column called `coordinates` of array<array<double>> type.
+    instruction: Dictionary.
+                 Parameters for how to process data, either the `PREPROCESS`
+                 section of training config json or metadata of a pretrained model.
+
+    Returns
+    -------
+    A pyspark.sql.dataframe.DataFrame with two new columns:
+    `word` (array<array<double>>) which contains the words, and
+    `word_pos` (integer) for the position of the word in the trace.
+    """
+
+    # [Step 1] Create words
+    df2 = create_words(df,
+                       'coordinates',
+                       word_size=instruction['word_size'])
+
+    return df2
+
+
+
+def preprocessing_part2(df, instruction, offset_vals=None, scale_vals=None):
+    """
+    Preprocessing (Part 2): Form "word vecs" from "words".
+
+    A word is a list of N coordinates that may or may not be consecutive, and
+    a word vecs is a set of numbers that represents a word.
+
+    offset_vals and scale_vals are only used when data needs to be normalized.
+    They are computed during training using *only* the training set only and
+    *not* the validation set. Failure to do this results in data leakage;
+    validation set should be normalised using the values from the training set.
+    See `train_val_split` function in train.py for an example.
+
+    Parameters
+    ----------
+    df: A pyspark.sql.dataframe.DataFrame
+        Dataframe returned by preprocessing_part1.
+    instruction: Dictionary.
+                 Parameters for how to process data, either the `PREPROCESS`
+                 section of training config json or metadata of a pretrained model.
+    offset_vals: A list of floats (optional).
+                 How much to offset each component of a word vec (see `create_word_vecs`
+                 function in word_vec.py). Used only when offset_vals are not
+                 provided in instruction.
+    scale_vals: A list of floats (optional).
+                How much to scale each component of a word vec (see `create_word_vecs`
+                function in word_vec.py). Used only when offset_vals are not
+                provided in instruction.
+
+    Returns
+    -------
+    Three objects:
+    - A pyspark.sql.dataframe.DataFrame with a new column `sentence`.
+    - offset_vals used in proprocessing.
+    - scale_vals used in proprocessing.
+    """
+
+    # Get offset_vals and scale_vals from instruction
+    if instruction['normalize']:
+        if 'norm_params' in instruction:  # instruction = metadata of a pre-trained model
+            offset_vals = instruction['norm_params']['offset']
+            scale_vals = instruction['norm_params']['scale']
+        else:
+            # use offset_vals and scale_vals as provided
+            pass
+
+    if 'clip_rng' not in instruction:
+        instruction['clip_rng'] = None
+
+    if 'ndigits' not in instruction:
+        instruction['ndigits'] = None
+
+    # [Step 2] Create word vecs
+    df, offset_vals, scale_vals = create_word_vecs(df,
+                                                   'word',
+                                                   instruction['desired_ops'],
+                                                   normalize=instruction['normalize'],
+                                                   offset_vals=offset_vals,
+                                                   scale_vals=scale_vals,
+                                                   clip_rng=instruction['clip_rng'],
+                                                   ndigits=instruction['ndigits'])
+
+    return df, offset_vals, scale_vals
+
+
+def preprocessing_part3(df, instruction):
+    """
+    Preprocessing (Part 3): Gather "word vecs" into "phrases".
+
+    A word vecs is a set of numbers that represents a word, and a phrase is a list
+    of consecutive words (or words in their word vec representation).
+
+    Parameters
+    ----------
+    df: A pyspark.sql.dataframe.DataFrame
+        Dataframe returned by preprocessing_part2.
+    instruction: Dictionary.
+                 Parameters for how to process data, either the `PREPROCESS`
+                 section of training config json or metadata of a pretrained model.
+
+    Returns
+    -------
+    A pyspark.sql.dataframe.DataFrame with three new columns:
+    `phrase` (<array<array<double>>) which contains the phrase,
+    `phrase_pos` (integer) for the position of the phrase in a sentence, and
+    `word_count` (integer) for the number of word vecs in a phrase.
+    """
+
+    # [Step 3] Create phrases
+    df = create_phrases(df,
+                        'word_vec',
+                        'id',
+                        'word_pos',
+                        desired_phrase_length=instruction['desired_phrase_length'])
+
+    return df

@@ -1,0 +1,71 @@
+{
+      "PREPROCESS": {
+          "DESCRIPTION":           "PARAMETERS FOR PREPROCESSING A TRACE (A GEOJSON LINESTRING) INTO MODEL INPUT (A MATRIX)",
+          "word_size":             [2, 1, 1],
+          "desired_ops":           [
+                                    [["d", 0, 1]],
+                                    [["s", 0, 1]]
+                                   ],
+          "normalize":             "mean-mad",
+          "clip_rng":              [-1, 1],
+          "ndigits":               2,
+          "desired_phrase_length": 15
+      },
+
+      "INPUT": {
+          "DESCRIPTION":           "PARAMETERS FOR CONSTRUCTING THE ARCHITECTURE AND USING THE MODEL FOR INFERENCE",
+          "ndims":                 1,
+          "classes":               ["Not Driving", "Driving", "Noise"]
+      },
+
+      "TRAIN": {
+          "DESCRIPTION":           "PARAMETERS FOR TRAINING A MODEL",
+          "loss":                  "sparse_categorical_crossentropy",
+          "metrics":               "sparse_categorical_accuracy",
+          "optimizer":             "Adagrad",
+          "k_fold_cv":             3,
+
+          "BATCH_GENERATOR": {
+              "DESCRIPTION":       "PARAMETERS FOR TRAINING SET BATCH GENERATOR. SEE get_batches FUNCTION IN train.py",
+              "batch_size":        16,
+              "shuffle":           true
+          },
+
+          "FIT": {
+              "DESCRIPTION":       "PARAMETERS FOR KERAS FIT GENERATOR. SEE train FUNCTION IN train.py",
+              "steps_per_epoch":   1000,
+              "validation_steps":  100,
+              "class_weight":      [1, 1, 1]
+          },
+
+          "EARLY_STOPPING": {
+              "DESCRIPTION":       "PARAMETERS FOR KERAS EarlyStopping OBJECT. SEE setup_early_stopping FUNCTION IN callback.py",
+              "monitor":           "val_sparse_categorical_accuracy",
+              "min_delta":         0.01,
+              "mode":              "max",
+              "patience":          10
+          },
+
+          "MODEL_CHECKPOINT": {
+              "DESCRIPTION":       "PARAMETERS FOR KERAS ModelCheckpoint OBJECT. SEE setup_model_checkpoint FUNCTION IN callback.py",
+              "monitor":           "val_sparse_categorical_accuracy",
+              "mode":              "max",
+              "save_weights_only": true
+          }
+      },
+
+      "VALIDATE": {
+          "DESCRIPTION":           "PARAMETERS FOR VALIDATING A MODEL",
+          "BATCH_GENERATOR": {
+              "DESCRIPTION":       "PARAMETERS FOR VALIDATION SET BATCH GENERATOR. SEE get_batches FUNCTION IN train.py",
+              "batch_size":         16,
+              "shuffle":            false
+          }
+      },
+
+      "SAVE": {
+          "DESCRIPTION":           "PARAMETERS SAVING RESULTS",
+          "saved_logs_dir":        "../../tensorboard/",
+          "saved_model_dir":       "../../model/"
+      }
+}
