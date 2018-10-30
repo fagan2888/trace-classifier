@@ -1,0 +1,2 @@
+include trace_classifier/sample_model/sample_model_metadata.json
+include trace_classifier/sample_model/sample_model_optimised_frozen.pb
