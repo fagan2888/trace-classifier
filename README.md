@@ -74,7 +74,7 @@ Best place to start is by reading [*On Reading the Code*](#on-reading-the-code) 
 
 ## Install
 ```
-pip install git+https://github.com/mapbox/trace-classifier@v0.1.0
+pip install git+https://github.com/mapbox/trace-classifier@v0.2.0
 ```
 
 ## Develop
