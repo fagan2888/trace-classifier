@@ -17,7 +17,7 @@ requirements = [
     'tensorflow==1.10.0',
     'numpy==1.14.5',
     'pandas==0.23.1',
-    'matplotlib==2.1.1',
+    'matplotlib==3.0.0',
     'h5py==2.8.0',
     'pyspark==2.3.1',
     'pyarrow==0.8.0'       # required by pyspark
