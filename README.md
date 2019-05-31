@@ -472,6 +472,6 @@ Below is a list of minor changes that can make trace-classifier faster and more 
 
 ## License
 
-Copyright (c) 2018 Mapbox
+Copyright (c) 2018 Mapbox.
 
 Distributed under the MIT License (MIT).
