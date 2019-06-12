@@ -44,9 +44,16 @@ def infer(df, model_file=None, aggregate=True):
     if model_file is None:
         metadata = json.loads(get_data('sample_model', 'sample_model_metadata.json'))
     else:
-        metadata = load_model_metadata(model_file)
+        parts = model_file.split("_")
+        if parts[0] == 'sample' and parts[1] == "model":
+            metadata = json.loads(get_data('sample_model', 'sample_model_metadata.json'))
+        else:
+            # this below doesnt work but we shouldn't get here right now
+            print("in the broken load model")
+            metadata = load_model_metadata(model_file)
 
-    print("metatdata is {}".format(model_file))
+    print("model_file is {}".format(model_file))
+    print("metadata is {}".format(metadata))
     # Load model metadata
     assert metadata is not None
 
