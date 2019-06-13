@@ -41,12 +41,14 @@ def infer(df, model_file=None, aggregate=True):
     """
 
     # Use sample model if a model is not provided.
+    sample_model_metadata = '{"word_size": [2, 1, 1], "desired_ops": [[["d", 0, 1]], [["s", 0, 1]]], "normalize": "mean-mad", "clip_rng": [-1, 1], "ndigits": 2, "desired_phrase_length": 15, "ndims": 1, "classes": ["Not Driving", "Driving", "Noise"], "input_shape": [15, 2], "norm_params": {"offset": [12.793474655679825, 0.006270694753199434], "scale": [11.100786721797306, 0.005729512902929993]}, "save_weights_only": true}'
+
     if model_file is None:
-        metadata = json.loads(get_data('sample_model', 'sample_model_metadata.json'))
+        metadata = sample_model_metadata
     else:
         parts = model_file.split("_")
         if parts[0] == 'sample' and parts[1] == "model":
-            metadata = json.loads(get_data('sample_model', 'sample_model_metadata.json'))
+            metadata = sample_model_metadata
         else:
             # this below doesnt work but we shouldn't get here right now
             print("in the broken load model")
