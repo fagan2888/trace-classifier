@@ -49,6 +49,7 @@ def infer(df, model_file=None, aggregate=True):
         parts = model_file.split("_")
         if parts[0] == 'sample' and parts[1] == "model":
             metadata = json.loads(sample_model_metadata)
+            model_file = 'sample_model/sample_model_optimized_frozen.pb'
         else:
             # this below doesnt work but we shouldn't get here right now
             print("in the broken load model")
@@ -68,9 +69,12 @@ def infer(df, model_file=None, aggregate=True):
     df4, _, _ = preprocessing_part2(df3, metadata)
     df5 = preprocessing_part3(df4, metadata)
     df5.persist()
+    print('df5 debug {}'.format(df5.take(1)))
 
     # Name of the column that contains the input
     input_col = 'phrase'
+
+    print('read serizalized tensorflow graph')
 
     # Read in serialized tensorflow graph
     with tf.gfile.FastGFile(model_file, 'rb') as f:
