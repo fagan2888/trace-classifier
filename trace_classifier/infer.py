@@ -48,11 +48,11 @@ def infer(df, model_file=None, aggregate=True):
     else:
         parts = model_file.split("_")
         if parts[0] == 'sample' and parts[1] == "model":
-            metadata = sample_model_metadata
+            metadata = json.loads(sample_model_metadata)
         else:
             # this below doesnt work but we shouldn't get here right now
             print("in the broken load model")
-            metadata = load_model_metadata(model_file)
+            metadata = json.loads(load_model_metadata(model_file))
 
     print("model_file is {}".format(model_file))
     print("metadata is {}".format(metadata))
