@@ -13,14 +13,15 @@ with open('trace_classifier/__init__.py') as f:
 
 # Requirements
 requirements = [
-    'keras==2.2.2',
-    'tensorflow==1.10.0',
-    'numpy==1.14.5',
+    'keras==2.3.0',
+    'tensorflow==1.15.2',
+    'tensorframes==0.2.9',
+    'numpy==1.16.0',
     'pandas==0.23.1',
     'matplotlib==3.0.0',
-    'h5py==2.8.0',
-    'pyspark==2.3.1',
-    'pyarrow==0.8.0'       # required by pyspark
+    'h5py==2.10.0',
+    'pyspark==2.3.2',
+    'pyarrow==0.8.0'
 ]
 
 # Extra requirements
