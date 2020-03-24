@@ -13,7 +13,7 @@ import pyspark.sql.types as T
 import pyspark.sql.functions as F
 from pyspark.sql.functions import col
 
-from .utils import is_equal_df
+from .utils import FIXTURES_PATH, TRACES_SCHEMA, is_equal_df
 
 spark = SparkSession.builder \
     .config('spark.jars.packages', 'databricks:tensorframes:0.5.0-s_2.11') \
@@ -23,13 +23,6 @@ spark = SparkSession.builder \
 
 from trace_classifier import cheap_ruler
 
-COORDINATES_TYPE = T.ArrayType(T.DoubleType())
-LINESTRING_TYPE = T.ArrayType(COORDINATES_TYPE)
-FIXTURES_PATH = path.join(path.dirname(path.realpath(__file__)), "fixtures")
-TRACES_SCHEMA = T.StructType([
-    T.StructField("test_id", T.StringType()),
-    T.StructField("coordinates", LINESTRING_TYPE)
-])
 RES_SCHEMA = T.StructType([
     *TRACES_SCHEMA.fields,
     T.StructField("kx", T.DoubleType()),
@@ -42,5 +35,6 @@ def test_cheap_ruler():
         schema=TRACES_SCHEMA
     )
     actual_df = cheap_ruler.cheap_ruler(traces_df)
+    # logging.info(actual_df.toJSON().collect())
     expected_df = spark.read.json(path.join(FIXTURES_PATH, "./res_cheap_ruler.json"))
     assert is_equal_df(expected_df, actual_df)
