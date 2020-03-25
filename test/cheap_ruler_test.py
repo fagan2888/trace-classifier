@@ -35,6 +35,5 @@ def test_cheap_ruler():
         schema=TRACES_SCHEMA
     )
     actual_df = cheap_ruler.cheap_ruler(traces_df)
-    # logging.info(actual_df.toJSON().collect())
     expected_df = spark.read.json(path.join(FIXTURES_PATH, "./res_cheap_ruler.json"))
     assert is_equal_df(expected_df, actual_df)
