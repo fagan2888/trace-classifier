@@ -36,7 +36,6 @@ def test_infer_aggregated():
     expected_df = spark.read.json(
         path.join(FIXTURES_PATH, "res_infer_aggregated.json")
     )
-    # assert is_equal_df(expected_df, actual_df)
     probs_actual = actual_df.orderBy("test_id").select("probas").collect()
     probs_expected = expected_df.orderBy("test_id").select("probas").collect()
     assert all([ r for (ps_e, ps_a) in zip(probs_actual, probs_expected) for r in np.isclose(ps_e, ps_a).flatten() ])
@@ -52,7 +51,6 @@ def test_infer_unaggregated():
     expected_df = spark.read.json(
         path.join(FIXTURES_PATH, "res_infer_unaggregated.json")
     )
-    logging.info(actual_df.toJSON().collect())
     probs_actual = actual_df.orderBy("test_id", "phrase_pos").select("probas").collect()
     probs_expected = expected_df.orderBy("test_id", "phrase_pos").select("probas").collect()
     # Check probabilities are within floating point error
