@@ -1,3 +1,4 @@
+"""Test module for trace_classifier/load.py"""
 import json
 
 from .utils import MODEL_PATH, METADATA_PATH

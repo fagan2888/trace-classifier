@@ -4,7 +4,8 @@ from os import path
 import pyspark.sql.types as T
 import pyspark.sql.functions as F
 from pyspark.sql.functions import col
-import numpy.testing as npt
+# import numpy.testing as npt
+import numpy as np
 
 FIXTURES_PATH = path.join(path.dirname(path.realpath(__file__)), "fixtures")
 MODEL_PATH = path.join(FIXTURES_PATH, "sample_model_optimised_frozen.pb")
@@ -31,8 +32,14 @@ def is_equal_df(expected_df, actual_df, sort_columns=["test_id"]):
         .orderBy(*sort_columns).collect()
     actual = actual_df.select(*sorted(actual_df.columns)) \
         .orderBy(*sort_columns).collect()
-    # e = expected[0]
-    # a = actual[0]
-    # logging.info(e)
-    # logging.info(a)
+    e = expected[0]
+    a = actual[0]
+    logging.info(e)
+    logging.info(a)
     return expected == actual
+
+
+def assert_are_close(actual, expected):
+    # X is an array
+    # nested comprehension flattens all comparisons
+    assert all([ r for (X_e, X_a) in zip(actual, expected) for r in np.isclose(X_e, X_a).flatten() ])

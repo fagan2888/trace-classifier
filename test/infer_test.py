@@ -16,7 +16,7 @@ import pyspark.sql.functions as F
 from pyspark.sql.functions import col
 
 from trace_classifier import infer
-from .utils import FIXTURES_PATH, MODEL_PATH, TRACES_SCHEMA, is_equal_df
+from .utils import FIXTURES_PATH, MODEL_PATH, TRACES_SCHEMA, is_equal_df, assert_are_close
 
 
 spark = SparkSession.builder \
@@ -38,7 +38,7 @@ def test_infer_aggregated():
     )
     probs_actual = actual_df.orderBy("test_id").select("probas").collect()
     probs_expected = expected_df.orderBy("test_id").select("probas").collect()
-    assert all([ r for (ps_e, ps_a) in zip(probs_actual, probs_expected) for r in np.isclose(ps_e, ps_a).flatten() ])
+    assert_are_close(probs_actual, probs_expected)
     assert is_equal_df(
         expected_df.select("test_id", "pred_modality"),
         actual_df.select("test_id", "pred_modality"),
@@ -54,7 +54,7 @@ def test_infer_unaggregated():
     probs_actual = actual_df.orderBy("test_id", "phrase_pos").select("probas").collect()
     probs_expected = expected_df.orderBy("test_id", "phrase_pos").select("probas").collect()
     # Check probabilities are within floating point error
-    assert all([ r for (ps_e, ps_a) in zip(probs_actual, probs_expected) for r in np.isclose(ps_e, ps_a).flatten() ])
+    assert_are_close(probs_actual, probs_expected)
     # Check predicted labels
     assert is_equal_df(
         expected_df.select("test_id", "phrase_pos", "pred_modality"),
@@ -71,7 +71,7 @@ def test_avg_probability():
     )
     probs_actual = actual_df.orderBy("id").select("sentence_probas").collect()
     probs_expected = expected_df.orderBy("id").select("sentence_probas").collect()
-    assert all([ r for (ps_e, ps_a) in zip(probs_actual, probs_expected) for r in np.isclose(ps_e, ps_a).flatten() ])
+    assert_are_close(probs_actual, probs_expected)
     assert is_equal_df(
         expected_df.select("id", "sentence_pred_label"),
         actual_df.select("id", "sentence_pred_label"),
