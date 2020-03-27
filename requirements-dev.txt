@@ -1,11 +1,10 @@
 keras==2.2.2
 tensorflow==1.10.0
-numpy==1.14.5
 tensorframes==0.2.9
-pandas==0.21.0
+numpy==1.14.5
+pandas==0.23.1
 matplotlib==3.0.0
 h5py==2.8.0
-findspark==1.3.0
 pyspark==2.3.2
 pyarrow==0.8.0
 pytest==5.0.1
