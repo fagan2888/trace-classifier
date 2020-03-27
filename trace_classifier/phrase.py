@@ -1,6 +1,4 @@
-from pyspark.sql.functions import collect_list
-from pyspark.sql.functions import pandas_udf
-from pyspark.sql.functions import size
+from pyspark.sql.functions import collect_list, pandas_udf, size, col
 from .utils import pad
 import numpy as np
 
@@ -61,16 +59,15 @@ def create_phrases(df, word_vec_col, sentence_id_col, word_pos_col,
     othercols = list(set(df.columns) - {word_vec_col, word_pos_col})
 
     # Assign each word to a phrase
-    df2 = df.withColumn(phrase_pos_col, phrase_id(df[word_pos_col]))
+    with_phrase_pos_df = df.withColumn(phrase_pos_col, phrase_id(df[word_pos_col]))
 
     # Collect the word vecs from the same phrase into an array
-    df3 = df2.sortWithinPartitions(sentence_id_col, word_pos_col) \
+    with_phrases_df = with_phrase_pos_df.sortWithinPartitions(sentence_id_col, word_pos_col) \
              .groupBy([*othercols, phrase_pos_col]) \
              .agg(collect_list(word_vec_col).alias(phrase_col))
 
 
     # Pad phrase to desired length
-    df4 = df3.withColumn('word_count', size(df3[phrase_col]))
-    df5 = df4.withColumn(phrase_col, pad(df4[phrase_col], desired_phrase_length - df4.word_count))
-
-    return df5
+    return with_phrases_df \
+        .withColumn('word_count', size(with_phrases_df[phrase_col])) \
+        .withColumn(phrase_col, pad(col(phrase_col), desired_phrase_length - col("word_count")))
