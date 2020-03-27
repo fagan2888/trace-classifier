@@ -38,12 +38,25 @@ def test_create_words():
 
 def test_create_word_vecs():
     words_df = word_vec.create_words(traces_df, "coordinates", [3, 1, 2])
+
     desired_ops = [
-        [("dx", 0, 1),
+        [("dx", 0, 1), # is like x(w[1]) - x(w[0]) where w[i] is the ith coordinate of the word w
         ("dy", 0, 1),
         ("d", 0, 1),
         ("t", 0, 1),
         ("s", 0, 1)]
     ]
     actual_df, offsets, scales = word_vec.create_word_vecs(words_df, "word", desired_ops)
-    logging.info(actual_df.toJSON().collect())
+    expected_df = spark.read.json(path.join(FIXTURES_PATH, "res_create_word_vecs.json"))
+    assert is_equal_df(expected_df, actual_df, sort_columns=["test_id", "word_pos"])
+
+    desired_ops = [
+        [("dx", 1, 2),
+        ("dy", 0, 1),
+        ("d", 0, 2),
+        ("t", 0, 2),
+        ("s", 2, 1)] # should be allowed
+    ]
+    actual_df, offsets, scales = word_vec.create_word_vecs(words_df, "word", desired_ops)
+    expected_df = spark.read.json(path.join(FIXTURES_PATH, "res_create_word_vecs_1.json"))
+    assert is_equal_df(expected_df, actual_df, sort_columns=["test_id", "word_pos"])
