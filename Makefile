@@ -22,7 +22,3 @@ test-local: install
 
 test-docker: image
 	docker run -i -t trace-classifier:latest
-
-pre-commit: install
-	source venv/bin/activate; \
-	pre-commit run --all-files
