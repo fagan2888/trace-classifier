@@ -40,6 +40,13 @@ def is_equal_df(expected_df, actual_df, sort_columns=["test_id"]):
 
 
 def assert_are_close(actual, expected):
-    # X is an array
+    """
+    Test two array of arrays for element-wise equality up to floating point error.
+    Args:
+        actual: <array<array<number>>
+        expected: <array<array<number>>
+    Returns
+        bool
+    """
     # nested comprehension flattens all comparisons
     assert all([ r for (X_e, X_a) in zip(actual, expected) for r in np.isclose(X_e, X_a).flatten() ])
