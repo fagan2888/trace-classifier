@@ -1,5 +1,4 @@
-from pyspark.sql.functions import pandas_udf
-from pyspark.sql.functions import cos
+from pyspark.sql.functions import pandas_udf, cos, col
 import numpy as np
 
 
@@ -24,15 +23,13 @@ def cheap_ruler(df, coordinates_col='coordinates'):
     `ky` (double type) for the multiplier in the y direction.
     """
 
-    df = df.withColumn('cos1', cos(df[coordinates_col][0][1] * np.pi / 180))  # latitude of first coordinate
-    df = df.withColumn('cos2', 2 * df.cos1 * df.cos1 - 1)
-    df = df.withColumn('cos3', 2 * df.cos1 * df.cos2 - df.cos1)
-    df = df.withColumn('cos4', 2 * df.cos1 * df.cos3 - df.cos2)
-    df = df.withColumn('cos5', 2 * df.cos1 * df.cos4 - df.cos3)
-
     m = 1000  # meters
-    df = df.withColumn('kx', m * (111.41513 * df.cos1 - 0.09455 * df.cos3 + 0.00012 * df.cos5))
-    df = df.withColumn('ky', m * (111.13209 - 0.56605 * df.cos2 + 0.0012 * df.cos4))
-    df = df.drop('lat', 'cos1', 'cos2', 'cos3', 'cos4', 'cos5')
-
-    return df
+    # require latitude of first coordinate
+    return df.withColumn('cos1', cos(df[coordinates_col][0][1] * np.pi / 180)) \
+        .withColumn('cos2', 2 * col("cos1") * col("cos1") - 1) \
+        .withColumn("cos3", 2 * col("cos1") * col("cos2") - col("cos1")) \
+        .withColumn('cos4', 2 * col("cos1") * col("cos3") - col("cos2")) \
+        .withColumn('cos5', 2 * col("cos1") * col("cos4") - col("cos3")) \
+        .withColumn('kx', m * (111.41513 * col("cos1") - 0.09455 * col("cos3") + 0.00012 * col("cos5"))) \
+        .withColumn('ky', m * (111.13209 - 0.56605 * col("cos2") + 0.0012 * col("cos4"))) \
+        .drop('lat', 'cos1', 'cos2', "cos3", 'cos4', 'cos5')
