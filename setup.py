@@ -20,7 +20,7 @@ requirements = [
     'pandas==0.23.1',
     'matplotlib==3.0.0',
     'h5py==2.8.0',
-    'pyspark==2.3.2',
+    'pyspark==2.4.4',
     'pyarrow==0.8.0'
 ]
 

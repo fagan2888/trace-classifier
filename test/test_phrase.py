@@ -7,9 +7,6 @@ from unittest import mock
 
 import numpy as np
 
-import findspark
-findspark.init()
-
 from pyspark.sql import SparkSession
 import pyspark.sql.types as T
 import pyspark.sql.functions as F
@@ -33,4 +30,3 @@ def test_create_phrases():
     expected_phrase = expected_df.orderBy("test_id", "phrase_pos").select("phrase").collect()
     actual_phrase = actual_df.orderBy("test_id", "phrase_pos").select("phrase").collect()
     assert_are_close(expected_phrase, actual_phrase)
-    # assert is_equal_df(expected_df, actual_df, sort_columns=["test_id", "phrase_pos"])

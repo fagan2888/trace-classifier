@@ -7,9 +7,6 @@ from unittest import mock
 
 import numpy as np
 
-import findspark
-findspark.init()
-
 from pyspark.sql import SparkSession
 import pyspark.sql.types as T
 import pyspark.sql.functions as F

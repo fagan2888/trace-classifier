@@ -5,9 +5,6 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)sZ [%(levelname)s][%(n
 import os
 from unittest import mock
 
-import findspark
-findspark.init()
-
 from pyspark.sql import SparkSession
 import pyspark.sql.types as T
 import pyspark.sql.functions as F
