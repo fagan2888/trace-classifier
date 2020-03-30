@@ -9,7 +9,7 @@ import json
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, lit
 from trace_classifier import utils
-from .utils import FIXTURES_PATH
+from .utils import FIXTURES_PATH, is_equal_df
 
 spark = SparkSession.builder \
     .config('spark.jars.packages', 'databricks:tensorframes:0.5.0-s_2.11') \
@@ -67,25 +67,37 @@ def test_argmax():
     assert res == [2, 0, 1, 1, 0]
 
 
-def test_pad():
+# def test_pad():
+#     df = spark.createDataFrame([
+#         ([[1, 2, 3], [3, 1, 2]],),
+#         ([[1, 23, 3], [1, 221, 3]],),
+#         ([[122, 2, 3], [122, 2, 3]],)
+#     ], ["x"])
+#     logging.info(df.withColumn(
+#         "x_padded",
+#         utils.pad(col("x"), lit(2))
+#     ).collect())
+#     assert False
+
+
+def test_create_label_and_reverse():
+    classes = ["Not Driving", "Driving", "Noise"]
+    pred_unaggregated_df = spark.read.json(path.join(FIXTURES_PATH, "res_infer_unaggregated.json"))
+    actual_df_forward = utils.create_label(pred_unaggregated_df, "pred_modality", "label", classes)
+    expected_df_forward = spark.read.json(path.join(FIXTURES_PATH, "res_create_labels.json"))
+    assert is_equal_df(expected_df_forward, actual_df_forward, ["id", "phrase_pos"])
+
+    actual_df_backwards = utils.reverse_create_label(actual_df_forward, "label", "class", classes)
+    reconstructed_classes = actual_df_backwards.select("class").rdd.flatMap(lambda x: x).collect()
+    original_classes = pred_unaggregated_df.select("pred_modality").rdd.flatMap(lambda x: x).collect()
+    assert all([ u == v for (u, v) in zip(original_classes, reconstructed_classes)])
+
+
+def test_explode_array():
     df = spark.createDataFrame([
-        ([1, 2, 3],),
-        ([3, 1, 2],),
-        ([1, 23, 3],),
-        ([1, 221, 3],),
-        ([122, 2, 3],)
-    ], ["x"])
-    traces_df = spark.read.json(path.join(FIXTURES_PATH, "traces.json"))
-    logging.info(traces_df.select(utils.pad(col("coordinates"), lit(2))).collect())
-
-
-#
-#
-# def test_create_label():
-#
-#
-# def test_reverse_create_label():
-#
-#
-# def test_add_id():
-#
+        ([1, 2, 3], "foo"),
+        ([4, 5, 6, 7, 8], "bar")
+    ], ["id", "baz"])
+    expected = [{"baz":"foo","key":0,"value":1}, {"baz":"foo","key":1,"value":2}, {"baz":"foo","key":2,"value":3}, {"baz":"bar","key":0,"value":4}, {"baz":"bar","key":1,"value":5}, {"baz":"bar","key":2,"value":6}, {"baz":"bar","key":3,"value":7}, {"baz":"bar","key":4,"value":8}]
+    actual = [ r.asDict() for r in utils.explode_array(df, "id", ["key", "value"]).collect() ]
+    assert expected == actual

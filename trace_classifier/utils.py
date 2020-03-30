@@ -270,9 +270,7 @@ def random_int_column(df, min_val, max_val, newcol, seed=None):
     A pyspark.sql.dataframe.DataFrame with a new random integers column.
     """
 
-    df2 = df.withColumn(newcol, floor(rand(seed=seed) * (max_val - min_val) + min_val))
-
-    return df2
+    return df.withColumn(newcol, floor(rand(seed=seed) * (max_val - min_val) + min_val))
 
 
 def explode_array(df, col, newcols):
