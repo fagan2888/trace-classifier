@@ -22,3 +22,15 @@ test-local: install
 
 test-docker: image
 	docker run -i -t trace-classifier:latest
+
+pre-commit: install
+	source venv/bin/activate; \
+	pre-commit run --files trace_classifier/cheap_ruler.py \
+		trace_classifier/infer.py \
+		trace_classifier/load.py \
+		trace_classifier/phrase.py \
+		trace_classifier/preprocessing.py \
+		trace_classifier/scaler.py \
+		trace_classifier/utils.py \
+		trace_classifier/word_vec.py \
+		./test
