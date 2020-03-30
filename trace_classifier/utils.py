@@ -95,7 +95,7 @@ def clip(df, cols, rng):
     df: A pyspark.sql.dataframe.DataFrame.
     cols: List of strings.
           Name of the columns to be rounded off.
-    rnd: Tuple of two numbers (integer or float), or a list of tuples of two numbers.
+    rng: Tuple of two numbers (integer or float), or a list of tuples of two numbers.
          The desired (min, max) range to clip values. If a list of tuples, the
          list must be the same length as cols (i.e. each column has a corresponding
          item in the rnd list).
