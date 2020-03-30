@@ -31,10 +31,6 @@ def is_equal_df(expected_df, actual_df, sort_columns=["test_id"]):
         .orderBy(*sort_columns).collect()
     actual = actual_df.select(*sorted(actual_df.columns)) \
         .orderBy(*sort_columns).collect()
-    # e = expected[0]
-    # a = actual[0]
-    # logging.info(e)
-    # logging.info(a)
     return expected == actual
 
 

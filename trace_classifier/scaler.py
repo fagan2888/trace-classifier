@@ -1,7 +1,8 @@
-from pyspark.sql.functions import col, lit
-from pyspark.sql.functions import mean as vmean
-from pyspark.sql.functions import abs as vabs
 import numpy as np
+from pyspark.sql.functions import abs as vabs
+from pyspark.sql.functions import col
+from pyspark.sql.functions import lit
+from pyspark.sql.functions import mean as vmean
 
 
 def compute_mean(df, cols):
@@ -19,7 +20,7 @@ def compute_mean(df, cols):
     The mean (float).
     """
 
-    ops = [ vmean(col(cname)) for cname in cols ]
+    ops = [vmean(col(cname)) for cname in cols]
     return np.sum(df.select(*ops).toPandas().values) / len(cols)
 
 
@@ -49,12 +50,17 @@ def compute_mad(df, cols, mean_val=None):
     ops = [vabs(col(cname) - col("mean")) for cname in cols]
 
     # Add mean as a column
-    with_ops_df = df.withColumn('mean', lit(mean_val)) \
-        .select(*ops)
-    with_sum_abs_diff_df = with_ops_df.withColumn('sum_abs_diff', sum(col(cname) for cname in with_ops_df.columns)) \
-        .select('sum_abs_diff').groupBy().sum()
+    with_ops_df = df.withColumn("mean", lit(mean_val)).select(*ops)
+    with_sum_abs_diff_df = (
+        with_ops_df.withColumn(
+            "sum_abs_diff", sum(col(cname) for cname in with_ops_df.columns)
+        )
+        .select("sum_abs_diff")
+        .groupBy()
+        .sum()
+    )
 
     n = df.count() * len(cols)
-    mad = with_sum_abs_diff_df.toPandas().values[0,0] / n
+    mad = with_sum_abs_diff_df.toPandas().values[0, 0] / n
 
     return mad
