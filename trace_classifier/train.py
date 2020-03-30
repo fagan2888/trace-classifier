@@ -48,7 +48,7 @@ def train_val_split(df, vfold, instruction):
     Parameters
     ----------
     df: A pyspark.sql.dataframe.DataFrame.
-        Dataframe returned by `preprocessing_part1` function (see preprocessing.py).
+        Dataframe returned by `preprocessing.include_id_and_label` function (see preprocessing.py).
     vfold: Integer.
            The fold to reserve as validation set.
     instruction: Dictionary.

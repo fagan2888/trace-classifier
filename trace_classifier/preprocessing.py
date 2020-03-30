@@ -54,40 +54,40 @@ def include_id_and_label(df, class_col=None, classes=None, n_folds=1, seed=None)
 
 
 
-def preprocessing_part1(df, instruction):
-    """
-    Proprocessing (Part 1): Form "words" from a "sentence".
-
-    A sentence is a location trace, and a word is a list of N coordinates
-    that may or may not be consecutive.
-
-    Parameters
-    ----------
-    df: A pyspark.sql.dataframe.DataFrame.
-        Expects a column called `coordinates` of array<array<double>> type.
-    instruction: Dictionary.
-                 Parameters for how to process data, either the `PREPROCESS`
-                 section of training config json or metadata of a pretrained model.
-
-    Returns
-    -------
-    A pyspark.sql.dataframe.DataFrame with two new columns:
-    `word` (array<array<double>>) which contains the words, and
-    `word_pos` (integer) for the position of the word in the trace.
-    """
-
-    # [Step 1] Create words
-    df2 = create_words(df,
-                       'coordinates',
-                       word_size=instruction['word_size'])
-
-    return df2
+# def preprocessing_part1(df, instruction):
+#     """
+#     Proprocessing (Part 1): Form "words" from a "sentence".
+#
+#     A sentence is a location trace, and a word is a list of N coordinates
+#     that may or may not be consecutive.
+#
+#     Parameters
+#     ----------
+#     df: A pyspark.sql.dataframe.DataFrame.
+#         Expects a column called `coordinates` of array<array<double>> type.
+#     instruction: Dictionary.
+#                  Parameters for how to process data, either the `PREPROCESS`
+#                  section of training config json or metadata of a pretrained model.
+#
+#     Returns
+#     -------
+#     A pyspark.sql.dataframe.DataFrame with two new columns:
+#     `word` (array<array<double>>) which contains the words, and
+#     `word_pos` (integer) for the position of the word in the trace.
+#     """
+#
+#     # [Step 1] Create words
+#     df2 = create_words(df,
+#                        'coordinates',
+#                        word_size=instruction['word_size'])
+#
+    # return df2
 
 
 
 def preprocessing_part2(df, instruction, offset_vals=None, scale_vals=None):
     """
-    Preprocessing (Part 2): Form "word vecs" from "words".
+    Preprocessing: Form "word vecs" from "words", "words" from "alphabet".
 
     A word is a list of N coordinates that may or may not be consecutive, and
     a word vecs is a set of numbers that represents a word.
@@ -101,7 +101,7 @@ def preprocessing_part2(df, instruction, offset_vals=None, scale_vals=None):
     Parameters
     ----------
     df: A pyspark.sql.dataframe.DataFrame
-        Dataframe returned by preprocessing_part1.
+        DataFrame with trace IDs and (if provided) labels
     instruction: Dictionary.
                  Parameters for how to process data, either the `PREPROCESS`
                  section of training config json or metadata of a pretrained model.
@@ -122,6 +122,9 @@ def preprocessing_part2(df, instruction, offset_vals=None, scale_vals=None):
     - scale_vals used in proprocessing.
     """
 
+    # include words
+    with_words_df = create_words(df, 'coordinates', word_size=instruction['word_size'])
+
     # Get offset_vals and scale_vals from instruction
     if instruction['normalize']:
         if 'norm_params' in instruction:  # instruction = metadata of a pre-trained model
@@ -138,7 +141,7 @@ def preprocessing_part2(df, instruction, offset_vals=None, scale_vals=None):
         instruction['ndigits'] = None
 
     # [Step 2] Create word vecs
-    df, offset_vals, scale_vals = create_word_vecs(df,
+    with_word_vecs_df, offset_vals, scale_vals = create_word_vecs(with_words_df,
                                                    'word',
                                                    instruction['desired_ops'],
                                                    normalize=instruction['normalize'],
@@ -147,7 +150,7 @@ def preprocessing_part2(df, instruction, offset_vals=None, scale_vals=None):
                                                    clip_rng=instruction['clip_rng'],
                                                    ndigits=instruction['ndigits'])
 
-    return df, offset_vals, scale_vals
+    return with_word_vecs_df, offset_vals, scale_vals
 
 
 def preprocessing_part3(df, instruction):

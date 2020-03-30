@@ -1,9 +1,8 @@
-from pyspark.sql.functions import sum as vsum
-from pyspark.sql.functions import array
+from pyspark.sql.functions import sum as vsum, array, col
 from pyspark import StorageLevel
 from .load import load_model_metadata
 from .preprocessing import include_id_and_label
-from .preprocessing import preprocessing_part1
+# from .preprocessing import preprocessing_part1
 from .preprocessing import preprocessing_part2
 from .preprocessing import preprocessing_part3
 from .utils import reverse_create_label
@@ -11,6 +10,9 @@ from .utils import argmax
 import tensorframes as tfs
 import tensorflow as tf
 import os
+
+
+INPUT_COL = 'phrase' # Name of the column that contains the input
 
 
 def infer(df, model_file=None, aggregate=True):
@@ -50,20 +52,13 @@ def infer(df, model_file=None, aggregate=True):
     assert metadata is not None
 
     # Preprocess data
-    df2 = include_id_and_label(df)   # To be joined with prediction
-    df2.persist(StorageLevel.DISK_ONLY)
-    df2.count();     # Use count to force Spark to execute a transformation.
-                     # Trailing semicolon suppresses printing in jupyter notebook
+    with_ids_and_labels_df = include_id_and_label(df)   # To be joined with prediction
+    with_ids_and_labels_df.persist()
 
-    df3       = preprocessing_part1(df2, metadata)
-    df4, _, _ = preprocessing_part2(df3, metadata)
-    df5       = preprocessing_part3(df4, metadata)
-    df5.persist(StorageLevel.DISK_ONLY)
-    df5.count();     # Use count to force Spark to execute a transformation.
-                     # Trailing semicolon suppresses printing in jupyter notebook
+    with_word_vecs_df, _, _ = preprocessing_part2(with_ids_and_labels_df, metadata)
+    with_phrases_df = preprocessing_part3(with_word_vecs_df, metadata)
+    with_phrases_df.persist()
 
-    # Name of the column that contains the input
-    input_col = 'phrase'
 
     # Read in serialized tensorflow graph
     with tf.gfile.FastGFile(model_file, 'rb') as f:
@@ -79,51 +74,44 @@ def infer(df, model_file=None, aggregate=True):
 
         # Add metadata on the input size to the dataframe for tensorframes
         input_shape = [None, *metadata['input_shape']]
-        df6 = tfs.append_shape(df5, df5[input_col], shape=input_shape)
+        model_input_df = tfs.append_shape(with_phrases_df, with_phrases_df[INPUT_COL], shape=input_shape)
 
         # Load graph
         [input_op, output_op] = tf.import_graph_def(graph_def, return_elements=[input_op_name, output_op_name])
 
         # Predict
-        df7 = tfs.map_blocks(output_op.outputs, df6, feed_dict={input_op.name: input_col})
+        model_output_df = tfs.map_blocks(output_op.outputs, model_input_df, feed_dict={input_op.name: INPUT_COL})
 
         # Rename column
-        output_col = list(set(df7.columns) - set(df5.columns))[0]  # Something like 'import/output/Softmax', but might change
-        df8 = df7.withColumnRenamed(output_col, 'probas')
-
-        # Find the label with the highest probability
-        rdf = df8.withColumn('pred_label', argmax(df8.probas))
+        output_col = list(set(model_output_df.columns) - set(with_phrases_df.columns))[0]  # Something like 'import/output/Softmax', but might change
+        phrasewise_res_df = model_output_df.withColumnRenamed(output_col, 'probas') \
+            .withColumn('pred_label', argmax(col("probas")))
 
         if aggregate:
-            rdf.persist(StorageLevel.DISK_ONLY)
-            rdf.count()   # Use count to force Spark to execute a transformation
+            phrasewise_res_df.persist()
 
             # Average piece-wise probabilities into full-trace probabilities, and
             # find the label with the highest probability.
-            rdf2 = avg_probability(rdf, 'id', 'probas', len(metadata['classes']))
+            with_avg_prob_df = avg_probability(phrasewise_res_df, 'id', 'probas', len(metadata['classes']))
 
             # Convert integer labels into string classes
-            rdf3 = reverse_create_label(rdf2, 'sentence_pred_label', 'pred_modality', metadata['classes'])
+            rdf4 = reverse_create_label(with_avg_prob_df, 'sentence_pred_label', 'pred_modality', metadata['classes']) \
+                .withColumnRenamed('sentence_probas', 'probas')
 
             # Join prediction with the original dataframe to get the coordinates
-            rdf4 = rdf3.withColumnRenamed('sentence_probas', 'probas')
-            rdf5 = df2.join(rdf4, on='id', how='inner')
+            res_df = with_ids_and_labels_df.join(rdf4, on='id', how='inner')
 
         else:
             # TO-DO: return pieces of coordinates rather than phrases
-            rdf5 = reverse_create_label(rdf, 'pred_label', 'pred_modality', metadata['classes'])
-
-
-        rdf5.persist(StorageLevel.DISK_ONLY)
-        rdf5.count();     # Use count to force Spark to execute a transformation.
-                         # Trailing semicolon suppresses printing in jupyter notebook
+            res_df = reverse_create_label(phrasewise_res_df, 'pred_label', 'pred_modality', metadata['classes'])
 
         # clean up
-        df2.unpersist()
-        df5.unpersist()
-        rdf.unpersist()
+        with_ids_and_labels_df.unpersist()
+        with_phrases_df.unpersist()
+        phrasewise_res_df.unpersist()
 
-        return rdf5
+        res_df.persist()
+        return res_df
 
 
 
@@ -170,6 +158,6 @@ def avg_probability(df, sentence_col, probas_col, n_classes):
     df4 = df3.select(sentence_col, array(*(df3[klass] for klass in classes)).alias('sentence_probas'))
 
     # Find the label with the highest probability
-    df5 = df4.withColumn('sentence_pred_label', argmax(df4.sentence_probas))
+    with_phrases_df = df4.withColumn('sentence_pred_label', argmax(df4.sentence_probas))
 
-    return df5
+    return with_phrases_df
