@@ -6,7 +6,6 @@ from .word_vec import create_word_vecs
 from .phrase import create_phrases
 
 
-
 def include_id_and_label(df, class_col=None, classes=None, n_folds=1, seed=None):
     """
     Preprocessing (Part 0): Housekeeping.
@@ -53,39 +52,7 @@ def include_id_and_label(df, class_col=None, classes=None, n_folds=1, seed=None)
     return res_df
 
 
-
-# def preprocessing_part1(df, instruction):
-#     """
-#     Proprocessing (Part 1): Form "words" from a "sentence".
-#
-#     A sentence is a location trace, and a word is a list of N coordinates
-#     that may or may not be consecutive.
-#
-#     Parameters
-#     ----------
-#     df: A pyspark.sql.dataframe.DataFrame.
-#         Expects a column called `coordinates` of array<array<double>> type.
-#     instruction: Dictionary.
-#                  Parameters for how to process data, either the `PREPROCESS`
-#                  section of training config json or metadata of a pretrained model.
-#
-#     Returns
-#     -------
-#     A pyspark.sql.dataframe.DataFrame with two new columns:
-#     `word` (array<array<double>>) which contains the words, and
-#     `word_pos` (integer) for the position of the word in the trace.
-#     """
-#
-#     # [Step 1] Create words
-#     df2 = create_words(df,
-#                        'coordinates',
-#                        word_size=instruction['word_size'])
-#
-    # return df2
-
-
-
-def preprocessing_part2(df, instruction, offset_vals=None, scale_vals=None):
+def include_word_vecs(df, instruction, offset_vals=None, scale_vals=None):
     """
     Preprocessing: Form "word vecs" from "words", "words" from "alphabet".
 
@@ -151,36 +118,3 @@ def preprocessing_part2(df, instruction, offset_vals=None, scale_vals=None):
                                                    ndigits=instruction['ndigits'])
 
     return with_word_vecs_df, offset_vals, scale_vals
-
-
-def preprocessing_part3(df, instruction):
-    """
-    Preprocessing (Part 3): Gather "word vecs" into "phrases".
-
-    A word vecs is a set of numbers that represents a word, and a phrase is a list
-    of consecutive words (or words in their word vec representation).
-
-    Parameters
-    ----------
-    df: A pyspark.sql.dataframe.DataFrame
-        Dataframe returned by preprocessing_part2.
-    instruction: Dictionary.
-                 Parameters for how to process data, either the `PREPROCESS`
-                 section of training config json or metadata of a pretrained model.
-
-    Returns
-    -------
-    A pyspark.sql.dataframe.DataFrame with three new columns:
-    `phrase` (<array<array<double>>) which contains the phrase,
-    `phrase_pos` (integer) for the position of the phrase in a sentence, and
-    `word_count` (integer) for the number of word vecs in a phrase.
-    """
-
-    # [Step 3] Create phrases
-    df = create_phrases(df,
-                        'word_vec',
-                        'id',
-                        'word_pos',
-                        desired_phrase_length=instruction['desired_phrase_length'])
-
-    return df

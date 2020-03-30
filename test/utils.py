@@ -4,7 +4,6 @@ from os import path
 import pyspark.sql.types as T
 import pyspark.sql.functions as F
 from pyspark.sql.functions import col
-# import numpy.testing as npt
 import numpy as np
 
 FIXTURES_PATH = path.join(path.dirname(path.realpath(__file__)), "fixtures")

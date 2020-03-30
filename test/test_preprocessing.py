@@ -34,14 +34,12 @@ def test_include_id_and_label():
     assert is_equal_df(expected_df, actual_df)
 
 
-def test_preprocessing_part2():
+def test_include_word_vecs():
     metadata = load.load_model_metadata(MODEL_PATH)
     assert metadata is not None
     with_ids_and_labels_df = spark.read.json(path.join(FIXTURES_PATH, "res_include_id_and_label.json"))
-    actual_df, actual_offsets, actual_scales  = pp.preprocessing_part2(with_ids_and_labels_df, metadata)
-    # expected_df = spark.read.json(path.join(FIXTURES_PATH, "res_preprocessing1.json"))
-    # assert is_equal_df(expected_df, actual_df)
-    logging.info(actual_df.toJSON().collect())
-    logging.info(actual_offsets)
-    logging.info(actual_scales)
-    assert False
+    actual_df, actual_offsets, actual_scales  = pp.include_word_vecs(with_ids_and_labels_df, metadata)
+    expected_df = spark.read.json(path.join(FIXTURES_PATH, "res_include_word_vecs.json"))
+    assert is_equal_df(expected_df, actual_df)
+    assert all([x == y for (x, y) in zip (actual_offsets, [12.793474655679825, 0.006270694753199434])])
+    assert all([x == y for (x, y) in zip (actual_scales, [11.100786721797306, 0.005729512902929993])])

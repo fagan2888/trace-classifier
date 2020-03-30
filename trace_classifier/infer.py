@@ -2,17 +2,14 @@ from pyspark.sql.functions import sum as vsum, array, col
 from pyspark import StorageLevel
 from .load import load_model_metadata
 from .preprocessing import include_id_and_label
-# from .preprocessing import preprocessing_part1
-from .preprocessing import preprocessing_part2
-from .preprocessing import preprocessing_part3
+from .preprocessing import include_word_vecs
+from .phrase import create_phrases
 from .utils import reverse_create_label
 from .utils import argmax
+from .config import MODEL_INPUT_CONFIG
 import tensorframes as tfs
 import tensorflow as tf
 import os
-
-
-INPUT_COL = 'phrase' # Name of the column that contains the input
 
 
 def infer(df, model_file=None, aggregate=True):
@@ -55,10 +52,15 @@ def infer(df, model_file=None, aggregate=True):
     with_ids_and_labels_df = include_id_and_label(df)   # To be joined with prediction
     with_ids_and_labels_df.persist()
 
-    with_word_vecs_df, _, _ = preprocessing_part2(with_ids_and_labels_df, metadata)
-    with_phrases_df = preprocessing_part3(with_word_vecs_df, metadata)
+    with_word_vecs_df, _, _ = include_word_vecs(with_ids_and_labels_df, metadata)
+    with_phrases_df = create_phrases(
+        with_word_vecs_df,
+        MODEL_INPUT_CONFIG["WORD_VEC_COL"],
+        MODEL_INPUT_CONFIG["ID_COL"],
+        MODEL_INPUT_CONFIG["WORD_POS_COL"],
+        desired_phrase_length=metadata['desired_phrase_length']
+    )
     with_phrases_df.persist()
-
 
     # Read in serialized tensorflow graph
     with tf.gfile.FastGFile(model_file, 'rb') as f:
@@ -74,13 +76,13 @@ def infer(df, model_file=None, aggregate=True):
 
         # Add metadata on the input size to the dataframe for tensorframes
         input_shape = [None, *metadata['input_shape']]
-        model_input_df = tfs.append_shape(with_phrases_df, with_phrases_df[INPUT_COL], shape=input_shape)
+        model_input_df = tfs.append_shape(with_phrases_df, with_phrases_df[MODEL_INPUT_CONFIG["INPUT_COL"]], shape=input_shape)
 
         # Load graph
         [input_op, output_op] = tf.import_graph_def(graph_def, return_elements=[input_op_name, output_op_name])
 
         # Predict
-        model_output_df = tfs.map_blocks(output_op.outputs, model_input_df, feed_dict={input_op.name: INPUT_COL})
+        model_output_df = tfs.map_blocks(output_op.outputs, model_input_df, feed_dict={input_op.name: MODEL_INPUT_CONFIG["INPUT_COL"]})
 
         # Rename column
         output_col = list(set(model_output_df.columns) - set(with_phrases_df.columns))[0]  # Something like 'import/output/Softmax', but might change
@@ -95,11 +97,11 @@ def infer(df, model_file=None, aggregate=True):
             with_avg_prob_df = avg_probability(phrasewise_res_df, 'id', 'probas', len(metadata['classes']))
 
             # Convert integer labels into string classes
-            rdf4 = reverse_create_label(with_avg_prob_df, 'sentence_pred_label', 'pred_modality', metadata['classes']) \
+            with_predicted_labels_df = reverse_create_label(with_avg_prob_df, 'sentence_pred_label', 'pred_modality', metadata['classes']) \
                 .withColumnRenamed('sentence_probas', 'probas')
 
             # Join prediction with the original dataframe to get the coordinates
-            res_df = with_ids_and_labels_df.join(rdf4, on='id', how='inner')
+            res_df = with_ids_and_labels_df.join(with_predicted_labels_df, on='id', how='inner')
 
         else:
             # TO-DO: return pieces of coordinates rather than phrases
@@ -112,7 +114,6 @@ def infer(df, model_file=None, aggregate=True):
 
         res_df.persist()
         return res_df
-
 
 
 def avg_probability(df, sentence_col, probas_col, n_classes):
@@ -147,17 +148,15 @@ def avg_probability(df, sentence_col, probas_col, n_classes):
         ops += vsum(df[probas_col][i]).alias(klass),
 
     # Add up probabilities
-    df2 = df.groupBy(sentence_col).agg(*ops)
+    with_probs_means = df.groupBy(sentence_col).agg(*ops) \
+        .withColumn('total_probas', sum(col(klass) for klass in classes))
 
     # Divide by total to get the average
-    df3 = df2.withColumn('total_probas', sum(df2[klass] for klass in classes))
+    # with_probs_means = df2.withColumn('total_probas', sum(df2[klass] for klass in classes))
     for klass_col in classes:
-        df3 = df3.withColumn(klass_col, df3[klass_col] / df3.total_probas)
+        with_probs_means = with_probs_means.withColumn(klass_col, col(klass_col) / col("total_probas"))
 
-    # Gather probabilities into an array
-    df4 = df3.select(sentence_col, array(*(df3[klass] for klass in classes)).alias('sentence_probas'))
-
-    # Find the label with the highest probability
-    with_phrases_df = df4.withColumn('sentence_pred_label', argmax(df4.sentence_probas))
-
-    return with_phrases_df
+    # Gather probabilities into an array, return argmax
+    return with_probs_means \
+        .select(sentence_col, array(*(with_probs_means[klass] for klass in classes)).alias('sentence_probas')) \
+        .withColumn('sentence_pred_label', argmax(col("sentence_probas")))

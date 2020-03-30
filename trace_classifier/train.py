@@ -1,6 +1,6 @@
 from pyspark.sql.functions import col
-from .preprocessing import preprocessing_part2
-from .preprocessing import preprocessing_part3
+from .config import MODEL_INPUT_CONFIG
+from .preprocessing import include_word_vecs
 from .model import construct_model
 from .callback import setup_tensor_board
 from .callback import setup_model_checkpoint
@@ -40,7 +40,6 @@ def compute_class_weight(df, label_col):
     return weights
 
 
-
 def train_val_split(df, vfold, instruction):
     """
     Splits df into a training set and a validation set.
@@ -68,14 +67,14 @@ def train_val_split(df, vfold, instruction):
     df_val = df.where(df.fold == vfold)
 
     # Process training set.
-    df_trn, offset_vals, scale_vals = preprocessing_part2(df_trn,
+    df_trn, offset_vals, scale_vals = include_word_vecs(df_trn,
                                                           instruction,
                                                           offset_vals=None,
                                                           scale_vals=None)
 
     # Process validation set. Note that this uses normalization parameters
     # `offest_vals` and `scale_vals` computed from the training set.
-    df_val, _, _ = preprocessing_part2(df_val,
+    df_val, _, _ = include_word_vecs(df_val,
                                        instruction,
                                        offset_vals=offset_vals,
                                        scale_vals=scale_vals)
@@ -87,7 +86,6 @@ def train_val_split(df, vfold, instruction):
     }
 
     return df_trn, df_val, params
-
 
 
 def get_batches(df, input_shape=(15, 2), batch_size=16, shuffle=True, seed=None):
@@ -106,7 +104,6 @@ def get_batches(df, input_shape=(15, 2), batch_size=16, shuffle=True, seed=None)
     seed: Integer (optional).
           Seed integer for random shuffle.
 
-
     Returns
     -------
     Two objects:
@@ -120,29 +117,33 @@ def get_batches(df, input_shape=(15, 2), batch_size=16, shuffle=True, seed=None)
         """Process dataframe into numpy arrays."""
 
         # Form phrases
-        df4 = preprocessing_part3(df_in, {'desired_phrase_length': input_shape[0]})
+        with_phrases_df = create_phrases(
+            with_word_vecs_df,
+            MODEL_INPUT_CONFIG["WORD_VEC_COL"],
+            MODEL_INPUT_CONFIG["ID_COL"],
+            MODEL_INPUT_CONFIG["WORD_POS_COL"],
+            desired_phrase_length=input_shape[0]
+        )
 
         # Note: this assumes the training set is small an can fit entirely in memeory.
-        df4.cache()
-        n = df4.count()
+        with_phrases_df.cache()
 
         # Convert dataframe into numpy array
-        x = np.stack(df4.select('phrase').toPandas().values[:,-1])  # need np.vstack otherwise it's an array of lists
+        x = np.stack(with_phrases_df.select('phrase').toPandas().values[:,-1])  # need np.vstack otherwise it's an array of lists
         if len(input_shape) == 3:
             # convert into a single-channel image
             x = np.expand_dims(x, axis=-1)
 
         # Convert labels into numpy array
-        y = df4.select('label').toPandas().values
+        y = with_phrases_df.select('label').toPandas().values
 
         # If batch size is larger than dataset, set batch_size to dataset length
         bs = min(n, batch_size)
 
         indices = np.arange(n)
-        df4.unpersist()  # no need to keep the dataframe in memory anymore as relevant data is in numpy arrays
+        with_phrases_df.unpersist()  # no need to keep the dataframe in memory anymore as relevant data is in numpy arrays
 
         return x, y, indices, n, bs
-
 
     # Initialize
     i = 0
@@ -179,10 +180,10 @@ def train(architecture, config, trn_set, val_set, n_epochs=3, print_summary=True
             Training configuration.
     trn_set: A pyspark.sql.dataframe.DataFrame.
              Training dataset, which is returned by either the `train_val_split`
-             function or `preprocessing_part2` function.
+             function or `include_word_vecs` function.
     val_set: A pyspark.sql.dataframe.DataFrame.
              Validation dataset, which is returned by either the `train_val_split`
-             function or `preprocessing_part2` function.
+             function or `include_word_vecs` function.
     n_epochs: Integer.
               Number of epochs to run.
     print_summary: Boolean.

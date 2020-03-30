@@ -1,6 +1,13 @@
 import json
 import os
 
+MODEL_INPUT_CONFIG = {
+  "ID_COL": "id",
+  "WORD_VEC_COL": "word_vec",
+  "WORD_POS_COL": "word_pos",
+  "INPUT_COL": "phrase"
+}
+
 
 def class_weights_todict(config):
     """
