@@ -1,0 +1,9 @@
+services:
+  - docker
+jobs:
+  include:
+    - language: python
+      python: 3.6
+      name: tests
+      install: make image
+      script: make test-docker
