@@ -1,19 +1,9 @@
 """Test module for trace_classifier/scaler.py"""
-from os import path
 import logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)sZ [%(levelname)s][%(name)s] %(message)s')
-import os
-from unittest import mock
-
-import numpy as np
 
 from pyspark.sql import SparkSession
-import pyspark.sql.types as T
-import pyspark.sql.functions as F
-from pyspark.sql.functions import col
-
 from trace_classifier import scaler
-from .utils import FIXTURES_PATH, MODEL_PATH, TRACES_SCHEMA, is_equal_df, assert_are_close
 
 
 spark = SparkSession.builder \
