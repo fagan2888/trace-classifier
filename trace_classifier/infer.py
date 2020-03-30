@@ -2,7 +2,7 @@ from pyspark.sql.functions import sum as vsum
 from pyspark.sql.functions import array
 from pyspark import StorageLevel
 from .load import load_model_metadata
-from .preprocessing import preprocessing_part0
+from .preprocessing import include_id_and_label
 from .preprocessing import preprocessing_part1
 from .preprocessing import preprocessing_part2
 from .preprocessing import preprocessing_part3
@@ -50,7 +50,7 @@ def infer(df, model_file=None, aggregate=True):
     assert metadata is not None
 
     # Preprocess data
-    df2 = preprocessing_part0(df)   # To be joined with prediction
+    df2 = include_id_and_label(df)   # To be joined with prediction
     df2.persist(StorageLevel.DISK_ONLY)
     df2.count();     # Use count to force Spark to execute a transformation.
                      # Trailing semicolon suppresses printing in jupyter notebook

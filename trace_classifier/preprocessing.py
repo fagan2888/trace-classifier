@@ -7,7 +7,7 @@ from .phrase import create_phrases
 
 
 
-def preprocessing_part0(df, class_col=None, classes=None, n_folds=1, seed=None):
+def include_id_and_label(df, class_col=None, classes=None, n_folds=1, seed=None):
     """
     Preprocessing (Part 0): Housekeeping.
 
@@ -36,20 +36,21 @@ def preprocessing_part0(df, class_col=None, classes=None, n_folds=1, seed=None):
 
     # Add an id column so that we can split a trace into pieces and still
     # know which piece comes from which trace.
-    df2 = add_id(df)
+    res_df = add_id(df)
 
+    # NOTE: Inference using the infer module does not follow either branch below
     # Convert class names to integer labels
     if class_col is not None:  # i.e. training and validation data
         assert classes is not None
 
         # Create label
-        df2 = create_label(df2, class_col, 'label', classes)
+        res_df = create_label(res_df, class_col, 'label', classes)
 
     # Assign each trace to a fold
     if n_folds > 1:
-        df2 = random_int_column(df2, 0, n_folds, 'fold', seed=seed)
+        res_df = random_int_column(res_df, 0, n_folds, 'fold', seed=seed)
 
-    return df2
+    return res_df
 
 
 
