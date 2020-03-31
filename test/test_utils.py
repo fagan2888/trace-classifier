@@ -7,6 +7,7 @@ from os import path
 import json
 
 from pyspark.sql import SparkSession
+import pyspark.sql.types as T
 from pyspark.sql.functions import col, lit
 from trace_classifier import utils
 from .utils import FIXTURES_PATH, is_equal_df
@@ -67,17 +68,29 @@ def test_argmax():
     assert res == [2, 0, 1, 1, 0]
 
 
-# def test_pad():
-#     df = spark.createDataFrame([
-#         ([[1, 2, 3], [3, 1, 2]],),
-#         ([[1, 23, 3], [1, 221, 3]],),
-#         ([[122, 2, 3], [122, 2, 3]],)
-#     ], ["x"])
-#     logging.info(df.withColumn(
-#         "x_padded",
-#         utils.pad(col("x"), lit(2))
-#     ).collect())
-#     assert False
+def test_pad():
+    schema = T.StructType([
+        T.StructField("x", T.ArrayType(T.ArrayType(T.FloatType()))),
+        T.StructField("test_id", T.StringType())
+    ])
+    df = spark.createDataFrame([
+        ([[1.0, 2.0, 3.0], [3.0, 1.0, 2.0]], 1),
+        ([[1.0, 23.0, 3.0], [1.0, 221.0, 3.0]], 2),
+        ([[122.0, 2.0, 3.0], [122.0, 2.0, 3.0]], 3)
+    ], schema=schema)
+    expected_df = spark.createDataFrame([
+        ([[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [1.0, 2.0, 3.0], [3.0, 1.0, 2.0]], 1),
+        ([[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [1.0, 23.0, 3.0], [1.0, 221.0, 3.0]], 2),
+        ([[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [122.0, 2.0, 3.0], [122.0, 2.0, 3.0]], 3)
+    ], schema=schema)
+    assert is_equal_df(
+        expected_df,
+        df.withColumn("x", utils.pad(col("x"), lit(2)))
+    )
+    assert is_equal_df(
+        df,
+        df.withColumn("x", utils.pad(col("x"), lit(0)))
+    )
 
 
 def test_create_label_and_reverse():
