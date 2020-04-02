@@ -1,5 +1,5 @@
 import numpy as np
-from pyspark.sql.functions import col as vcol
+from pyspark.sql.functions import col
 from pyspark.sql.functions import floor
 from pyspark.sql.functions import monotonically_increasing_id
 from pyspark.sql.functions import pandas_udf
@@ -78,7 +78,7 @@ def round_columns(df, cols, decimals=0):
 
     ops = []
     for i, cname in enumerate(cols):
-        ops += (vround(df[cname], decimals[i]).alias(cname),)
+        ops += (vround(col(cname), decimals[i]).alias(cname),)
 
     return df.select(*othercols, *ops)
 
@@ -116,9 +116,9 @@ def clip(df, cols, rng):
     ops = []
     for i, cname in enumerate(cols):
         ops += (
-            when(df[cname] < rng[i][0], rng[i][0])
-            .when(df[cname] > rng[i][1], rng[i][1])
-            .otherwise(df[cname])
+            when(col(cname) < rng[i][0], rng[i][0])
+            .when(col(cname) > rng[i][1], rng[i][1])
+            .otherwise(col(cname))
             .alias(cname),
         )
 
@@ -188,13 +188,11 @@ def create_label(df, class_col, label_col, classes):
     labels = list(map(str, range(len(classes))))
 
     # Replace only works for same data type
-    df2 = (
+    return (
         df.replace(classes, labels, subset=class_col)
-        .withColumn(label_col, vcol(class_col).cast("integer"))
+        .withColumn(label_col, col(class_col).cast("integer"))
         .drop(class_col)
     )
-
-    return df2
 
 
 def reverse_create_label(df, label_col, class_col, classes):
@@ -222,13 +220,11 @@ def reverse_create_label(df, label_col, class_col, classes):
     labels = list(map(str, range(len(classes))))
 
     # Replace only works for same data type
-    df2 = (
-        df.withColumn(class_col, vcol(label_col).cast("string"))
+    return (
+        df.withColumn(class_col, col(label_col).cast("string"))
         .replace(labels, classes, subset=class_col)
         .drop(label_col)
     )
-
-    return df2
 
 
 def add_id(df, id_col="id"):
@@ -273,14 +269,14 @@ def random_int_column(df, min_val, max_val, newcol, seed=None):
     return df.withColumn(newcol, floor(rand(seed=seed) * (max_val - min_val) + min_val))
 
 
-def explode_array(df, col, newcols):
+def explode_array(df, target_col, newcols):
     """
     Explodes an array into one row per item.
 
     Parameters
     ----------
     df: A pyspark.sql.dataframe.DataFrame.
-    col: String.
+    target_col: String.
          Name of the array column to explode.
     newcols: Tuple of two strings.
              New columns (position, item) to store array items and their position
@@ -291,6 +287,6 @@ def explode_array(df, col, newcols):
     A pyspark.sql.dataframe.DataFrame with col column replaced by two new columns.
     """
 
-    othercols = list(set(df.columns) - {col})
+    othercols = list(set(df.columns) - {target_col})
 
-    return df.select(*othercols, posexplode(col).alias(*newcols))
+    return df.select(*othercols, posexplode(target_col).alias(*newcols))
