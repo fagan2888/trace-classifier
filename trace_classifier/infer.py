@@ -189,7 +189,6 @@ def avg_probability(df, sentence_col, probas_col, n_classes):
     )
 
     # Divide by total to get the average
-    # with_probs_means = df2.withColumn('total_probas', sum(df2[klass] for klass in classes))
     for klass_col in classes:
         with_probs_means = with_probs_means.withColumn(
             klass_col, col(klass_col) / col("total_probas")
