@@ -91,10 +91,9 @@ def include_word_vecs(df, instruction, offset_vals=None, scale_vals=None):
     with_words_df = create_words(df, "coordinates", word_size=instruction["word_size"])
 
     # Get offset_vals and scale_vals from instruction
+    # NOTE: instruction = metadata of a pre-trained model
     if instruction["normalize"]:
-        if (
-            "norm_params" in instruction
-        ):  # instruction = metadata of a pre-trained model
+        if "norm_params" in instruction:
             offset_vals = instruction["norm_params"]["offset"]
             scale_vals = instruction["norm_params"]["scale"]
         else:
