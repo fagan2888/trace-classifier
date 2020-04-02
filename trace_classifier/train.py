@@ -127,6 +127,7 @@ def get_batches(df, input_shape=(15, 2), batch_size=16, shuffle=True, seed=None)
 
         # Note: this assumes the training set is small an can fit entirely in memeory.
         with_phrases_df.cache()
+        n = with_phrases_df.count()
 
         # Convert dataframe into numpy array
         x = np.stack(with_phrases_df.select('phrase').toPandas().values[:,-1])  # need np.vstack otherwise it's an array of lists
