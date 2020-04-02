@@ -1,21 +1,24 @@
 """Test module for trace_classifier/scaler.py"""
 import logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)sZ [%(levelname)s][%(name)s] %(message)s')
+
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)sZ [%(levelname)s][%(name)s] %(message)s"
+)
 
 from pyspark.sql import SparkSession
 from trace_classifier import scaler
 
 
-spark = SparkSession.builder \
-    .config('spark.jars.packages', 'databricks:tensorframes:0.5.0-s_2.11') \
-    .enableHiveSupport() \
-    .appName("Generate routes test") \
+spark = (
+    SparkSession.builder.config(
+        "spark.jars.packages", "databricks:tensorframes:0.5.0-s_2.11"
+    )
+    .enableHiveSupport()
+    .appName("Generate routes test")
     .getOrCreate()
-
-df = spark.createDataFrame(
-    [ (i, i**2) for i in range(10) ],
-    ["x", "y"]
 )
+
+df = spark.createDataFrame([(i, i ** 2) for i in range(10)], ["x", "y"])
 
 
 def test_compute_mean():

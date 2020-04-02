@@ -1,9 +1,10 @@
 import logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)sZ [%(levelname)s][%(name)s] %(message)s')
+
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)sZ [%(levelname)s][%(name)s] %(message)s"
+)
 from os import path
 import pyspark.sql.types as T
-import pyspark.sql.functions as F
-from pyspark.sql.functions import col
 import numpy as np
 
 FIXTURES_PATH = path.join(path.dirname(path.realpath(__file__)), "fixtures")
@@ -12,10 +13,13 @@ METADATA_PATH = path.join(FIXTURES_PATH, "sample_model_metadata.json")
 
 COORDINATES_TYPE = T.ArrayType(T.DoubleType())
 LINESTRING_TYPE = T.ArrayType(COORDINATES_TYPE)
-TRACES_SCHEMA = T.StructType([
-    T.StructField("test_id", T.StringType()),
-    T.StructField("coordinates", LINESTRING_TYPE)
-])
+TRACES_SCHEMA = T.StructType(
+    [
+        T.StructField("test_id", T.StringType()),
+        T.StructField("coordinates", LINESTRING_TYPE),
+    ]
+)
+
 
 def is_equal_df(expected_df, actual_df, sort_columns=["test_id"]):
     """
@@ -27,10 +31,14 @@ def is_equal_df(expected_df, actual_df, sort_columns=["test_id"]):
     Returns
         bool
     """
-    expected = expected_df.select(*sorted(expected_df.columns)) \
-        .orderBy(*sort_columns).collect()
-    actual = actual_df.select(*sorted(actual_df.columns)) \
-        .orderBy(*sort_columns).collect()
+    expected = (
+        expected_df.select(*sorted(expected_df.columns))
+        .orderBy(*sort_columns)
+        .collect()
+    )
+    actual = (
+        actual_df.select(*sorted(actual_df.columns)).orderBy(*sort_columns).collect()
+    )
     return expected == actual
 
 
@@ -44,4 +52,10 @@ def assert_are_close(actual, expected):
         bool
     """
     # nested comprehension flattens all comparisons
-    assert all([ r for (X_e, X_a) in zip(actual, expected) for r in np.isclose(X_e, X_a).flatten() ])
+    assert all(
+        [
+            r
+            for (X_e, X_a) in zip(actual, expected)
+            for r in np.isclose(X_e, X_a).flatten()
+        ]
+    )
