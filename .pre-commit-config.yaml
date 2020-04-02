@@ -26,3 +26,4 @@ repos:
     rev: v1.6.1
     hooks:
       - id: reorder-python-imports
+exclude: 'architecture\.py|callback\.py|config\.py|cross_validation\.py|custom_objects\.py|evaluate\.py|metric\.py|model\.py|read\.py|save\.py|train\.py|write\.py|sample_model'
