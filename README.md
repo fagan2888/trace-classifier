@@ -82,6 +82,15 @@ pip install git+https://github.com/mapbox/trace-classifier@v0.2.0
 python setup.py develop
 ```
 
+### Make targets
+
+- `make image`: Build a docker image for testing
+- `make venv`: Creates virtual environment
+- `make install`: Ensures that virtual environment exists then installs requirements from requirements-dev.txt and requirements.txt
+- `make clean`: Deletes virtual environment
+- `make test-local`: Ensures that install is completed and then runs tests
+- `make test-docker`: Ensures that docker image is created and then runs tests in a docker container
+
 ## Environment
 
 The code has been verified to work in the following environment:

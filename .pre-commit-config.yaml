@@ -1,0 +1,29 @@
+repos:
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v2.2.3
+  hooks:
+    - id: trailing-whitespace
+      exclude: node_modules/*
+    - id: end-of-file-fixer
+      exclude: node_modules/*
+    - id: check-yaml
+    - id: flake8
+      exclude: process_interaction_events.py|test/fixtures/*
+      args: [
+          # E501 let black handle all line length decisions
+          # W503 black conflicts with "line break before operator" rule
+          # E203 black conflicts with "whitespace before ':'" rule
+          # W605 false positive on our regex strings
+          # E402 module level import not at top of file
+          # E712 comparison to False should be 'if cond is False:' or 'if not cond
+          # E722 do not use bare 'except'
+          '--ignore=E501,W503,E203,W605,E402,E712,E722']
+- repo: https://github.com/psf/black
+  rev: 19.3b0
+  hooks:
+    - id: black
+-   repo: https://github.com/asottile/reorder_python_imports
+    rev: v1.6.1
+    hooks:
+      - id: reorder-python-imports
+exclude: 'architecture\.py|callback\.py|config\.py|cross_validation\.py|custom_objects\.py|evaluate\.py|metric\.py|model\.py|read\.py|save\.py|train\.py|write\.py|sample_model|__init__\.py'

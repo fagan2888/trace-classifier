@@ -1,7 +1,8 @@
-from pyspark.sql.functions import col, lit
-from pyspark.sql.functions import mean as vmean
-from pyspark.sql.functions import abs as vabs
 import numpy as np
+from pyspark.sql.functions import abs as vabs
+from pyspark.sql.functions import col
+from pyspark.sql.functions import lit
+from pyspark.sql.functions import mean as vmean
 
 
 def compute_mean(df, cols):
@@ -19,18 +20,8 @@ def compute_mean(df, cols):
     The mean (float).
     """
 
-    ops = []
-    for cname in cols:
-        ops += vmean(col(cname)),
-
-    # Mean of each column
-    df2 = df.select(*ops)
-
-    # Mean across columns
-    mean = np.sum(df2.toPandas().values) / len(cols)
-
-    return mean
-
+    ops = [vmean(col(cname)) for cname in cols]
+    return np.sum(df.select(*ops).toPandas().values) / len(cols)
 
 
 def compute_mad(df, cols, mean_val=None):
@@ -56,24 +47,20 @@ def compute_mad(df, cols, mean_val=None):
     if mean_val is None:
         mean_val = compute_mean(df, cols)
 
+    ops = [vabs(col(cname) - col("mean")) for cname in cols]
+
     # Add mean as a column
-    df2 = df.withColumn('mean', lit(mean_val))
+    with_ops_df = df.withColumn("mean", lit(mean_val)).select(*ops)
+    with_sum_abs_diff_df = (
+        with_ops_df.withColumn(
+            "sum_abs_diff", sum(col(cname) for cname in with_ops_df.columns)
+        )
+        .select("sum_abs_diff")
+        .groupBy()
+        .sum()
+    )
 
-    ops = []
-    for cname in cols:
-        ops += vabs(df2[cname] - df2.mean),
-
-    # absolute difference for each column
-    df3 = df2.select(*ops)
-
-    # sum of difference for each row
-    df4 = df3.withColumn('sum_abs_diff', sum(df3[cname] for cname in df3.columns))
-
-    # total absolute difference
-    df5 = df4.select('sum_abs_diff').groupBy().sum()
-
-    # MAD
     n = df.count() * len(cols)
-    mad = df5.toPandas().values[0,0] / n
+    mad = with_sum_abs_diff_df.toPandas().values[0, 0] / n
 
     return mad

@@ -1,14 +1,18 @@
-from pyspark.sql.functions import posexplode
-from pyspark.sql.functions import monotonically_increasing_id
-from pyspark.sql.functions import rand, floor
-from pyspark.sql.functions import round as vround
-from pyspark.sql.functions import when
-from pyspark.sql.functions import udf
-from pyspark.sql.functions import pandas_udf
-from pyspark.sql.functions import lit
-from pyspark.sql.functions import col as vcol
-from pyspark.sql.types import ArrayType, DoubleType, StringType, StructType, StructField
 import numpy as np
+from pyspark.sql.functions import col
+from pyspark.sql.functions import floor
+from pyspark.sql.functions import monotonically_increasing_id
+from pyspark.sql.functions import pandas_udf
+from pyspark.sql.functions import posexplode
+from pyspark.sql.functions import rand
+from pyspark.sql.functions import round as vround
+from pyspark.sql.functions import udf
+from pyspark.sql.functions import when
+from pyspark.sql.types import ArrayType
+from pyspark.sql.types import DoubleType
+from pyspark.sql.types import StringType
+from pyspark.sql.types import StructField
+from pyspark.sql.types import StructType
 
 
 def getGeojsonSchema():
@@ -24,16 +28,23 @@ def getGeojsonSchema():
     A pyspark.sql.dataframe schema.
     """
 
-    schema = StructType([
-        StructField('geometry', StructType([
-            StructField('coordinates', ArrayType(ArrayType(DoubleType()))),
-            StructField('type', StringType())
-        ])),
-        StructField('properties', StructType([
-            StructField('modality', StringType())
-        ])),
-        StructField('type', StringType())
-    ])
+    schema = StructType(
+        [
+            StructField(
+                "geometry",
+                StructType(
+                    [
+                        StructField("coordinates", ArrayType(ArrayType(DoubleType()))),
+                        StructField("type", StringType()),
+                    ]
+                ),
+            ),
+            StructField(
+                "properties", StructType([StructField("modality", StringType())])
+            ),
+            StructField("type", StringType()),
+        ]
+    )
 
     return schema
 
@@ -67,7 +78,7 @@ def round_columns(df, cols, decimals=0):
 
     ops = []
     for i, cname in enumerate(cols):
-        ops += vround(df[cname], decimals[i]).alias(cname),
+        ops += (vround(col(cname), decimals[i]).alias(cname),)
 
     return df.select(*othercols, *ops)
 
@@ -84,7 +95,7 @@ def clip(df, cols, rng):
     df: A pyspark.sql.dataframe.DataFrame.
     cols: List of strings.
           Name of the columns to be rounded off.
-    rnd: Tuple of two numbers (integer or float), or a list of tuples of two numbers.
+    rng: Tuple of two numbers (integer or float), or a list of tuples of two numbers.
          The desired (min, max) range to clip values. If a list of tuples, the
          list must be the same length as cols (i.e. each column has a corresponding
          item in the rnd list).
@@ -104,45 +115,17 @@ def clip(df, cols, rng):
 
     ops = []
     for i, cname in enumerate(cols):
-        ops += when(df[cname] < rng[i][0], rng[i][0]).when(df[cname] > rng[i][1], rng[i][1]).otherwise(df[cname]).alias(cname),
+        ops += (
+            when(col(cname) < rng[i][0], rng[i][0])
+            .when(col(cname) > rng[i][1], rng[i][1])
+            .otherwise(col(cname))
+            .alias(cname),
+        )
 
     return df.select(*othercols, *ops)
 
 
-def scale(df, cols, scale):
-    """
-    Scales the values in onre or more columns.
-
-    Parameters
-    ----------
-    df: A pyspark.sql.dataframe.DataFrame.
-    cols: List of strings.
-          Name of the columns to be scale.
-    scale: Float, or a list floats.
-           The scaling factor. If a list of tuples, the list must be the same length
-           as cols (i.e. each column has a corresponding item in the scale list).
-
-    Returns
-    -------
-    A pyspark.sql.dataframe.DataFrame.
-    """
-
-    othercols = list(set(df.columns) - set(cols))
-
-    # Convert scale into a list of the same length as cols
-    if not isinstance(scale, float):
-        scale = [scale] * len(cols)
-
-    assert len(cols) == len(scale)
-
-    ops = []
-    for i, cname in enumerate(cols):
-        ops += vcol(df2[col] * scale[i]).alias(cname),
-
-    return df.select(*othercols, *ops)
-
-
-@pandas_udf('int')
+@pandas_udf("int")
 def argmax(v):
     """
     Returns the argmax of an array.
@@ -160,8 +143,7 @@ def argmax(v):
     return v.apply(lambda arr: np.argmax(arr, axis=-1))
 
 
-
-@udf('array<array<float>>')  # Tensorframes requires float instead of double
+@udf("array<array<float>>")  # Tensorframes requires float instead of double
 def pad(arr, n):
     """
     Prepends an array with zero vector.
@@ -178,8 +160,7 @@ def pad(arr, n):
     A pyspark.sql.column.Column of zero-padded phrase (array<array<float>>).
     """
 
-    return np.pad(arr, [(n, 0), (0, 0)], 'constant', constant_values=0.0).tolist()
-
+    return np.pad(arr, [(n, 0), (0, 0)], "constant", constant_values=0.0).tolist()
 
 
 def create_label(df, class_col, label_col, classes):
@@ -207,11 +188,11 @@ def create_label(df, class_col, label_col, classes):
     labels = list(map(str, range(len(classes))))
 
     # Replace only works for same data type
-    df2 = df.replace(classes, labels, subset=class_col) \
-            .withColumn(label_col, vcol(class_col).cast('integer')) \
-            .drop(class_col)
-
-    return df2
+    return (
+        df.replace(classes, labels, subset=class_col)
+        .withColumn(label_col, col(class_col).cast("integer"))
+        .drop(class_col)
+    )
 
 
 def reverse_create_label(df, label_col, class_col, classes):
@@ -239,15 +220,14 @@ def reverse_create_label(df, label_col, class_col, classes):
     labels = list(map(str, range(len(classes))))
 
     # Replace only works for same data type
-    df2 = df.withColumn(class_col, vcol(label_col).cast('string')) \
-            .replace(labels, classes, subset=class_col) \
-            .drop(label_col)
+    return (
+        df.withColumn(class_col, col(label_col).cast("string"))
+        .replace(labels, classes, subset=class_col)
+        .drop(label_col)
+    )
 
-    return df2
 
-
-
-def add_id(df, id_col='id'):
+def add_id(df, id_col="id"):
     """
     Adds a unique identifier column.
 
@@ -263,7 +243,6 @@ def add_id(df, id_col='id'):
     """
 
     return df.withColumn(id_col, monotonically_increasing_id())
-
 
 
 def random_int_column(df, min_val, max_val, newcol, seed=None):
@@ -287,19 +266,17 @@ def random_int_column(df, min_val, max_val, newcol, seed=None):
     A pyspark.sql.dataframe.DataFrame with a new random integers column.
     """
 
-    df2 = df.withColumn(newcol, floor(rand(seed=seed) * (max_val - min_val) + min_val))
-
-    return df2
+    return df.withColumn(newcol, floor(rand(seed=seed) * (max_val - min_val) + min_val))
 
 
-def explode_array(df, col, newcols):
+def explode_array(df, target_col, newcols):
     """
     Explodes an array into one row per item.
 
     Parameters
     ----------
     df: A pyspark.sql.dataframe.DataFrame.
-    col: String.
+    target_col: String.
          Name of the array column to explode.
     newcols: Tuple of two strings.
              New columns (position, item) to store array items and their position
@@ -310,6 +287,6 @@ def explode_array(df, col, newcols):
     A pyspark.sql.dataframe.DataFrame with col column replaced by two new columns.
     """
 
-    othercols = list(set(df.columns) - {col})
+    othercols = list(set(df.columns) - {target_col})
 
-    return df.select(*othercols, posexplode(col).alias(*newcols))
+    return df.select(*othercols, posexplode(target_col).alias(*newcols))
