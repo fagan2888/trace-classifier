@@ -106,7 +106,7 @@ def load_model_metadata(model_path):
         # Model is in the form of: <model_name>_some_other_strings.pb
         # Search for model name by cutting off the filename part by part
         parts = model_name.split("_")
-        for i in range(len(parts) - 1, -1, -1):
+        for i in range(len(parts), -1, -1):
             model_name = "_".join(parts[:i])
             metadata_file = os.path.join(saved_model_dir, model_name + "_metadata.json")
             if os.path.exists(metadata_file):
