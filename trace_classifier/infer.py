@@ -132,7 +132,7 @@ def infer(df, model_file=None, aggregate=True):
 
             # Join prediction with the original dataframe to get the coordinates
             res_df = with_ids_and_labels_df.join(
-                with_predicted_labels_df, on=MODEL_INPUT_CONFIG["ID_COL"], how="inner"
+                with_predicted_labels_df, on=MODEL_INPUT_CONFIG["ID_COL"], how="left"
             )
 
         else:
