@@ -30,6 +30,9 @@ spark = (
 traces_df = spark.read.json(
     path.join(FIXTURES_PATH, "traces.json"), schema=TRACES_SCHEMA
 )
+short_traces_df = spark.read.json(
+    path.join(FIXTURES_PATH, "short_traces.json"), schema=TRACES_SCHEMA
+)
 
 
 def test_infer_aggregated():
@@ -43,6 +46,12 @@ def test_infer_aggregated():
         actual_df.select("test_id", "pred_modality"),
         sort_columns=["test_id"],
     )
+
+    # Ensure short traces aren't dropped
+    actual_df = infer.infer(short_traces_df, model_file=MODEL_PATH, aggregate=True)
+    logging.info(actual_df.toJSON().collect())
+    assert False
+
 
 
 def test_infer_unaggregated():

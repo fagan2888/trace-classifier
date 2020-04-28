@@ -1,10 +1,13 @@
 import os
 
+import logging
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)sZ [%(levelname)s][%(name)s] %(message)s"
+)
+
 import tensorflow as tf
 import tensorframes as tfs
-from pyspark.sql.functions import array
-from pyspark.sql.functions import col
-from pyspark.sql.functions import sum as vsum
+from pyspark.sql.functions import array, col, when, isnull, lit, sum as vsum
 
 from .config import MODEL_INPUT_CONFIG
 from .load import load_model_metadata
@@ -64,6 +67,7 @@ def infer(df, model_file=None, aggregate=True):
         desired_phrase_length=metadata["desired_phrase_length"],
     )
     with_phrases_df.persist()
+    logging.info(with_phrases_df.toJSON().collect())
 
     # Read in serialized tensorflow graph
     with tf.gfile.FastGFile(model_file, "rb") as f:
@@ -131,6 +135,7 @@ def infer(df, model_file=None, aggregate=True):
             ).withColumnRenamed("sentence_probas", "probas")
 
             # Join prediction with the original dataframe to get the coordinates
+            # Left join to handle edge case in which trace has fewer than three
             res_df = with_ids_and_labels_df.join(
                 with_predicted_labels_df, on=MODEL_INPUT_CONFIG["ID_COL"], how="left"
             )
@@ -147,7 +152,22 @@ def infer(df, model_file=None, aggregate=True):
         phrasewise_res_df.unpersist()
 
         res_df.persist()
-        return res_df
+
+        n_pre_infer = df.count()
+        n_post_infer = res_df.count()
+        logging.info("Trades pre-infer {}".format(n_pre_infer))
+        logging.info("Trades post-infer {}".format(n_post_infer))
+        if (n_pre_infer is not n_post_infer) and aggregate == True:
+            raise Exception("Some traces dropped during inference! Check `coordinates` shape.")
+
+        return "What"
+        # return res_df \
+        #     .withColumn("probas", when(~ isnull("probas"), col("probas")).otherwise(
+        #         array([lit(0.0), lit(0.0), lit(0.0)])
+        #     )) \
+        #     .withColumn("pred_modality", when(~ isnull("pred_modality"), col("pred_modality")).otherwise(
+        #         "NA"
+        #     ))
 
 
 def avg_probability(df, sentence_col, probas_col, n_classes):
