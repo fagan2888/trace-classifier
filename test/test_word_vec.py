@@ -38,7 +38,9 @@ def test_create_words():
 
     # Traces w/ < 3 coordinates are dropped
     actual_df = word_vec.create_words(short_traces_df, "coordinates", [3, 1, 2])
-    expected_df = spark.read.json(path.join(FIXTURES_PATH, "res_create_words_short.json"))
+    expected_df = spark.read.json(
+        path.join(FIXTURES_PATH, "res_create_words_short.json")
+    )
     assert is_equal_df(expected_df, actual_df, sort_columns=["test_id", "word_pos"])
 
 

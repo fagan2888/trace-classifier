@@ -48,10 +48,24 @@ def test_infer_aggregated():
     )
 
     # Ensure short traces aren't dropped
-    actual_df = infer.infer(short_traces_df, model_file=MODEL_PATH, aggregate=True)
-    logging.info(actual_df.toJSON().collect())
-    assert False
-
+    # NOTE: the sample model used for testing has a word length of 2
+    actual_df_short = infer.infer(
+        short_traces_df, model_file=MODEL_PATH, aggregate=True
+    )
+    expected_df_short = spark.read.json(
+        path.join(FIXTURES_PATH, "res_infer_short.json")
+    )
+    probs_actual_short = actual_df_short.orderBy("test_id").select("probas").collect()
+    probs_expected_short = (
+        expected_df_short.orderBy("test_id").select("probas").collect()
+    )
+    assert_are_close(probs_actual_short, probs_expected_short)
+    assert actual_df_short.count() == 3
+    assert is_equal_df(
+        expected_df_short.select("test_id", "pred_modality"),
+        actual_df_short.select("test_id", "pred_modality"),
+        sort_columns=["test_id"],
+    )
 
 
 def test_infer_unaggregated():

@@ -8,7 +8,6 @@ logging.basicConfig(
 
 from pyspark.sql import SparkSession
 
-from trace_classifier import word_vec
 from trace_classifier import phrase
 from .utils import FIXTURES_PATH, assert_are_close
 
@@ -34,4 +33,3 @@ def test_create_phrases():
         actual_df.orderBy("test_id", "phrase_pos").select("phrase").collect()
     )
     assert_are_close(expected_phrase, actual_phrase)
-
