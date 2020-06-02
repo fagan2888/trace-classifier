@@ -152,12 +152,10 @@ def infer(df, model_file=None, aggregate=True):
 
         res_df.persist()
 
-        # n_pre_infer = df.count()
-        # n_post_infer = res_df.count()
-        # if (n_pre_infer is not n_post_infer) and aggregate == True:
-        #     raise Exception(
-        #         "Some traces dropped during inference! Check `coordinates` shape."
-        #     )
+        n_pre_infer = df.count()
+        n_post_infer = res_df.count()
+        if (n_pre_infer is not n_post_infer) and aggregate == True:
+            raise Exception("Some traces dropped during inference!")
 
         return res_df.withColumn(
             "probas",
