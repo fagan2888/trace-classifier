@@ -3,7 +3,9 @@ import os
 import tensorflow as tf
 import tensorframes as tfs
 from pyspark.sql.functions import array
+from pyspark.sql.functions import coalesce
 from pyspark.sql.functions import col
+from pyspark.sql.functions import lit
 from pyspark.sql.functions import sum as vsum
 
 from .config import MODEL_INPUT_CONFIG
@@ -131,8 +133,9 @@ def infer(df, model_file=None, aggregate=True):
             ).withColumnRenamed("sentence_probas", "probas")
 
             # Join prediction with the original dataframe to get the coordinates
+            # Left join to handle edge case in which trace has fewer than three
             res_df = with_ids_and_labels_df.join(
-                with_predicted_labels_df, on=MODEL_INPUT_CONFIG["ID_COL"], how="inner"
+                with_predicted_labels_df, on=MODEL_INPUT_CONFIG["ID_COL"], how="left"
             )
 
         else:
@@ -146,8 +149,15 @@ def infer(df, model_file=None, aggregate=True):
         with_phrases_df.unpersist()
         phrasewise_res_df.unpersist()
 
+        n_pre_infer = df.count()
+        n_post_infer = res_df.count()
+        if (n_pre_infer is not n_post_infer) and aggregate == True:
+            raise Exception("Some traces dropped during inference!")
+
         res_df.persist()
-        return res_df
+        return res_df.withColumn(
+            "probas", coalesce(col("probas"), array([lit(0.0), lit(0.0), lit(0.0)]))
+        ).withColumn("pred_modality", coalesce(col("pred_modality"), lit("NA")))
 
 
 def avg_probability(df, sentence_col, probas_col, n_classes):
