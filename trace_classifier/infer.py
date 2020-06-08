@@ -3,11 +3,10 @@ import os
 import tensorflow as tf
 import tensorframes as tfs
 from pyspark.sql.functions import array
+from pyspark.sql.functions import coalesce
 from pyspark.sql.functions import col
-from pyspark.sql.functions import isnull
 from pyspark.sql.functions import lit
 from pyspark.sql.functions import sum as vsum
-from pyspark.sql.functions import when
 
 from .config import MODEL_INPUT_CONFIG
 from .load import load_model_metadata
@@ -150,22 +149,15 @@ def infer(df, model_file=None, aggregate=True):
         with_phrases_df.unpersist()
         phrasewise_res_df.unpersist()
 
-        res_df.persist()
-
         n_pre_infer = df.count()
         n_post_infer = res_df.count()
         if (n_pre_infer is not n_post_infer) and aggregate == True:
             raise Exception("Some traces dropped during inference!")
 
+        res_df.persist()
         return res_df.withColumn(
-            "probas",
-            when(~isnull("probas"), col("probas")).otherwise(
-                array([lit(0.0), lit(0.0), lit(0.0)])
-            ),
-        ).withColumn(
-            "pred_modality",
-            when(~isnull("pred_modality"), col("pred_modality")).otherwise("NA"),
-        )
+            "probas", coalesce(col("probas"), array([lit(0.0), lit(0.0), lit(0.0)]))
+        ).withColumn("pred_modality", coalesce(col("pred_modality"), lit("NA")))
 
 
 def avg_probability(df, sentence_col, probas_col, n_classes):
