@@ -22,6 +22,7 @@ RUN pip3 install pyspark==2.4.4
 COPY ./requirements* ./
 COPY Makefile ./
 RUN pip3 install -r requirements-dev.txt
+RUN make install
 
 COPY . ./
 CMD make test-local
