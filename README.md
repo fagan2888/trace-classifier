@@ -96,7 +96,7 @@ python setup.py develop
 The code has been verified to work in the following environment:
 
 - Python: `>3.5`
-- PySpark: `2.3.1`
+- PySpark: `2.4.4`
   - Recommend setting `spark.sql.codegen.wholeStage` to `False`
   - Recommend setting `spark.sql.caseSensitive` to `True`
 - Tensorframes: `0.4.0-s_2.11` or `0.5.0-s_2.11`
